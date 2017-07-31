@@ -1,0 +1,511 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <title>Sliding Puzzle Game</title>
+        <script src="js/phaser.min.js"></script>
+        <style type="text/css">
+            canvas{
+                width:100%;
+                height:100%;
+            }
+            
+            body{
+                padding: 0px;
+                margin: 0;
+            }
+        </style>
+    </head>
+    <body>
+
+<script type="text/javascript">
+
+//Game settings
+var game;
+var gameWidth = 600;
+var gameHeight = 900;
+var gameState;
+var turnState;
+var score;
+
+//sound
+var game_music;
+var confirm_sound;
+var error_sound;
+var completed_sound;
+
+//images
+var background;
+
+
+//Other settings
+var baseCardWidth = 120;
+var baseCardHeight = 132;
+var minYPadding = 00;
+var minXPadding = 18;
+var wCards = 5;
+var basePadding = 16;
+var basePaddingH = 20;
+var cardsGrid = [];
+var numberlList;
+var hNCards = 4;
+var vNCards = 4;
+
+var numberList = [];
+var movesDone = [];
+var nRandomMoves = 50;
+var moves = 0;
+var blankTilePosition;
+var posibleMoves = ["up", "down", "left", "right"];
+
+var lastMove = '';
+
+var scoreText = '';
+var timeText = '';
+
+var reset_button;
+var solve_button;
+
+var outerbox;
+var gameCards;
+
+//var solveClicked = function() {};
+
+window.onload = function() {
+
+    //init game object and and disable antialiasing with last params
+    //new Game(width, height, renderer, parent, state, transparent, antialias, physicsConfig)
+    game = new Phaser.Game(gameWidth, gameHeight, Phaser.AUTO, '', { preload: preload, create: create, update: update, render:render }, true, false);
+    
+    function preload () {
+        //game.load.image('background', 'img/');
+        //game.load.spritesheet('elephant', 'img/elephant.png', 256, 256);
+
+        game.load.audio('game_music', 'music/beach.mp3');
+        game.load.audio('confirm_sound', 'sound/Purchase.wav');
+        game.load.audio('error_sound', 'sound/Error.wav');
+        game.load.audio('completed_sound', 'sound/Well_Done_CCBY3.mp3');
+        
+        game.load.image('background', 'img/Sky.png');
+        game.load.image('outerbox', 'img/outerbox.png');
+        
+        game.load.image('reset_button', 'img/reset.png');
+        game.load.image('solve_button', 'img/solve.png');
+        
+        for(x=1; x<16; x++){
+            game.load.image(x+'', 'img/'+x+'.png');
+        }
+    }
+    
+    function restarGame(){
+            moves = 0;
+            gameCards = null;
+            movesDone = [];
+            cardsGrid = [];
+            game.state.start(game.state.current);
+    }
+    
+    function checkCards(){
+            
+            n = 1;
+            failed = false;
+            for(x=0; x<hNCards; x++){
+                for(y=0; y<vNCards; y++){
+                    
+                    console.log("position: ",x,y, " number: ",cardsGrid[y][x].number, " n: ",n);
+                    
+                    if(n === 16){
+                        n = 0;
+                    }
+                    
+                    if(cardsGrid[y][x].number !== n){
+                        
+                        failed = true;
+                    }
+                    n = n+1;
+                }
+            }
+            
+            if(failed === false){
+                gameState = "finished";
+                completed_sound.play();
+            }else{
+                turnState = "pick";
+            }
+            
+            return;
+        }
+    
+    function slideCardResolver(){
+        
+        if(movesDone.length > 0){
+            movement = movesDone.pop();
+            console.log("movement: ",gameCards);
+            //get card by number
+            card = null;
+            cardGrid = null;
+            for(h = 0; h < gameCards.children.length; h++){
+                console.log("GameCard: ", gameCards.children[h]);
+                if(gameCards.children[h].number === movement.number){
+                    card = gameCards.children[h];
+                }
+            }
+        
+            if(movement.direction === "down"){
+                direction = { y: [card.y -(baseCardHeight+basePaddingH)] };
+            }
+            
+            if(movement.direction === "up"){
+                direction = { y: [card.y +(baseCardHeight+basePaddingH)] };
+            }
+            
+            if(movement.direction === "left"){
+                direction = { x: [card.x -(baseCardWidth+basePadding)] };
+            }
+            
+            if(movement.direction === "right"){
+                direction = { x: [card.x +(baseCardWidth+basePadding)] };
+            }
+            
+            //card.gridPosition = "_"+(posX)+""+(posY-1);
+            //movesDone.push({"number":card.number, "direction":"up"});
+            
+            tween = game.add.tween(card);
+            tween.to(direction, 400, "Linear");
+            tween.onComplete.add(function(){
+                //moveCards(posX, posY, posX, posY-1, card);
+                //switchPosition(posX, posY-1, posX, posY);
+                //card.gridPosition = "_"+(posX)+""+(posY-1);
+                moves += 1;
+                slideCardResolver();
+            }, this);
+            tween.start();
+        }
+        else{
+            checkCards();
+        }
+        
+        
+        
+    }
+    
+    
+    function solveClicked(card, pointer){
+        if(turnState === "pick" && gameState === "playing"){
+            gameState = "solving";
+            slideCardResolver();
+        }
+    }
+
+    function create () {
+        
+        background = game.add.sprite(0, 0, 'background');
+        background.scale.setTo( game.world.width/background.width , game.world.height/background.height);
+        
+        
+        reset_button = game.add.sprite(30, 650, 'reset_button');
+        reset_button.inputEnabled = true;
+        reset_button.events.onInputDown.add(restarGame, this);
+        
+        solve_button = game.add.sprite(300, 650, 'solve_button');
+        solve_button.inputEnabled = true;
+        solve_button.events.onInputDown.add(solveClicked, this);
+        
+        movesText = game.add.text(30, 750, 'Moves done: '+moves, { font: "bold 32px Arial", fill: "#fff", boundsAlignH: "center", boundsAlignV: "middle" });
+        movesText.setShadow(3, 3, 'rgba(0,0,0,0.5)', 2);
+        
+        //add music
+        game_music = game.add.audio('game_music');
+        game_music.volume = 0.3;
+        game_music.loop = true;
+        game_music.play();
+        
+        confirm_sound = game.add.audio('confirm_sound');
+        confirm_sound.volume = 0.7;
+        confirm_sound.loop = false;
+
+        error_sound = game.add.audio('error_sound');
+        error_sound.volume = 0.8;
+        error_sound.loop = false;
+        
+        completed_sound = game.add.audio('completed_sound');
+        error_sound.volume = 0.8;
+        error_sound.loop = false;
+        
+        numberList = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+        
+        gameCards = game.add.group();
+        
+        outerbox = game.add.sprite(minXPadding, minYPadding, 'outerbox');
+        outerbox.scale.setTo(1,1);
+        
+        createCards();
+        turnState = "pick";
+        gameState = "playing";
+    }
+    
+    
+    function update () {
+        movesText.setText('Moves done: ' + moves);
+    }
+    
+
+    function render() {
+
+    }
+    
+    
+    function createCards(){
+        
+        var r;
+        var x;
+        var y;
+        var n = 1;
+        
+        //init multi dimencion array
+        for (i=0;i<vNCards;i++) {
+            cardsGrid[i]=new Array();
+            for (j=0;j<hNCards;j++) {
+                cardsGrid[i][j]={};
+            }
+        }
+        
+        //initial and final state
+        for(y=0; y < hNCards; y++){
+            for(x=0; x<vNCards; x++){
+                cardsGrid[x][y] = {
+                    number:n,
+                    gridPosition: "_"+x+""+y
+                };
+                
+                if(n >= 15)
+                    n = 0;
+                else
+                    n = n+1;
+            }
+        }
+        
+        
+        blankTilePosition = {"x":x-1, "y":y-1};
+        
+        //randomize cards
+        for(n=0; n < nRandomMoves; n++){
+            
+            
+            r = Math.floor((Math.random() * posibleMoves.length));
+            var moveTo = posibleMoves[r];
+            
+            console.log("Moving to: ", moveTo);
+            if(lastMove !== "down" ){
+                if(moveTo === "up"){
+                    console.log("Check: ", moveTo, blankTilePosition);
+                    if(typeof cardsGrid[blankTilePosition.x]  !== "undefined" && typeof cardsGrid[blankTilePosition.x][blankTilePosition.y+1] !== "undefined"){
+                        console.log("Resolving: ", moveTo);
+                        
+                        targetX = blankTilePosition.x;
+                        targetY = blankTilePosition.y+1;
+                        
+                        switchPosition(blankTilePosition.x, blankTilePosition.y, targetX, targetY);
+                        movesDone.push({"number":tempCard1.number, "direction":moveTo});
+                        lastMove = "up";
+                    }
+                }
+            }
+            
+            if(lastMove !== "up"){
+                if(moveTo === "down"){
+                    console.log("Check: ", moveTo, blankTilePosition);
+                    if(typeof cardsGrid[blankTilePosition.x] !== "undefined" && typeof cardsGrid[blankTilePosition.x][blankTilePosition.y-1] !== "undefined"){
+                        console.log("Resolving: ", moveTo);
+                        
+                        targetX = blankTilePosition.x;
+                        targetY = blankTilePosition.y-1;
+                        
+                        switchPosition(blankTilePosition.x, blankTilePosition.y, targetX, targetY);
+                        movesDone.push({"number":tempCard1.number, "direction":moveTo});
+                        
+                        lastMove = "down";
+                    }
+                }
+            }
+            
+            if(lastMove !== "right" ){
+                if(moveTo === "left"){
+                    console.log("Check: ", moveTo, blankTilePosition);
+                    if(typeof cardsGrid[blankTilePosition.x-1] !== "undefined" && typeof cardsGrid[blankTilePosition.x-1][blankTilePosition.y] !== "undefined"){
+                        console.log("Resolving: ", moveTo);
+                        
+                        targetX = blankTilePosition.x-1;
+                        targetY = blankTilePosition.y;
+                        
+                        switchPosition(blankTilePosition.x, blankTilePosition.y, targetX, targetY);
+                        movesDone.push({"number":tempCard1.number, "direction":moveTo});
+                        lastMove = "left";
+                    }
+                }
+            }
+            
+            if(lastMove !== "left" ){
+                if(moveTo === "right"){
+                    console.log("Check: ", moveTo, blankTilePosition);
+                    if(typeof cardsGrid[blankTilePosition.x+1] !== "undefined" && typeof cardsGrid[blankTilePosition.x+1][blankTilePosition.y] !== "undefined"){
+                        console.log("Resolving: ", moveTo);
+                        
+                        targetX = blankTilePosition.x+1;
+                        targetY = blankTilePosition.y;
+                        
+                        switchPosition(blankTilePosition.x, blankTilePosition.y, targetX, targetY);
+                        
+                        //blankTilePosition = {"x":targetX, "y": targetY};
+                        
+                        movesDone.push({"number":tempCard1.number, "direction":moveTo});
+                        
+                        lastMove = "right";
+                    }
+                }
+                
+            }
+            
+            
+            console.log("Tile 0: ", blankTilePosition);
+        }
+        
+        //place the tiles
+        for(x=0; x<hNCards; x++){
+            for(y=0; y<vNCards; y++){
+                
+                if(cardsGrid[x][y].number !== 0){
+                    var gameCard = gameCards.create( (baseCardWidth*x)+(basePadding*(x+1)+minXPadding), (baseCardHeight*y)+(basePaddingH*(y+1)), cardsGrid[x][y].number+'');
+                    gameCard.scale.setTo(1,1);
+                    gameCard.inputEnabled = true;
+                    gameCard.events.onInputDown.add(cardClicked, this);
+                    gameCard.number = cardsGrid[x][y].number;
+                    gameCard.gridPosition = cardsGrid[x][y].gridPosition
+                }
+                
+            }
+        }
+        
+        
+        function cardClicked(card, pointer){
+            
+            if(turnState === "sliding" || gameState === "finished"){
+                error_sound.play();
+                return;
+            }
+            
+            var posX = parseInt(card.gridPosition.charAt(1),10);
+            var posY = parseInt(card.gridPosition.charAt(2),10);
+            
+            
+            //check up
+            if(typeof cardsGrid[posX] !== "undefined" && typeof cardsGrid[posX][posY-1] !== "undefined"){
+                if(cardsGrid[posX][posY-1].number === 0){
+                    //alert("Move Up");
+                    turnState = "sliding";
+                    confirm_sound.play();
+                    tween = game.add.tween(card);
+                    tween.to({ y: [card.y -(baseCardHeight+basePaddingH)] }, 400, "Linear");
+                    tween.onComplete.add(function(){
+                        //moveCards(posX, posY, posX, posY-1, card);
+                        switchPosition(posX, posY-1, posX, posY);
+                        card.gridPosition = "_"+(posX)+""+(posY-1);
+                        movesDone.push({"number":card.number, "direction":"up"});
+                        moves += 1;
+                        checkCards();
+                    }, this);
+                    tween.start();
+                }
+            }
+            
+            //check down
+            if(typeof cardsGrid[posX] !== "undefined" && typeof cardsGrid[posX][posY+1] !== "undefined"){
+                if(cardsGrid[posX][posY+1].number === 0){
+                    //alert("Move Down");
+                    turnState = "sliding";
+                    confirm_sound.play();
+                    tween = game.add.tween(card);
+                    tween.to({ y: [card.y +(baseCardHeight+basePaddingH)] }, 400, "Linear");
+                    tween.onComplete.add(function(){
+                        //moveCards(posX, posY, posX, posY+1, card);
+                        switchPosition(posX, posY+1, posX, posY);
+                        card.gridPosition = "_"+(posX)+""+(posY+1);
+                        movesDone.push({"number":card.number, "direction":"down"});
+                        moves += 1;
+                        checkCards();
+                    }, this);
+                    tween.start();
+                }
+            }
+            
+            //check left
+            if(typeof cardsGrid[posX-1] !== "undefined" && typeof cardsGrid[posX-1][posY] !== "undefined"){
+                if(cardsGrid[posX-1][posY].number === 0){
+                    //alert("Move Left");
+                    turnState = "sliding";
+                    confirm_sound.play();
+                    tween = game.add.tween(card);
+                    tween.to({ x: [card.x -(baseCardWidth+basePadding)] }, 400, "Linear");
+                    tween.onComplete.add(function(){
+                        //moveCards(posX, posY, posX-1, posY, card);
+                        switchPosition(posX-1, posY, posX, posY);
+                        card.gridPosition = "_"+(posX-1)+""+(posY);
+                        movesDone.push({"number":card.number, "direction":"left"});
+                        moves += 1;
+                        checkCards();
+                    }, this);
+                    tween.start();
+                }
+            }
+            
+            //check right
+            if(typeof cardsGrid[posX+1] !== "undefined" && typeof cardsGrid[posX+1][posY] !== "undefined"){
+                if(cardsGrid[posX+1][posY].number === 0){
+                    //alert("Move Right");
+                    turnState = "sliding";
+                    confirm_sound.play();
+                    tween = game.add.tween(card);
+                    tween.to({ x: [card.x +(baseCardWidth+basePadding)] }, 400, "Linear");
+                    tween.onComplete.add(function(){
+                        //moveCards(posX, posY, posX+1, posY, card);
+                        switchPosition(posX+1, posY, posX, posY);
+                        card.gridPosition = "_"+(posX+1)+""+(posY);
+                        movesDone.push({"number":card.number, "direction":"right"});
+                        moves += 1;
+                        checkCards();
+                    }, this);
+                    tween.start();
+                }
+            }
+            
+        }
+        
+        function moveCards(posX, posY, posXm, posYm, card){
+            
+            tempCard = cardsGrid[posX][posY];
+            cardsGrid[posX][posY] = cardsGrid[posXm][posYm]
+            cardsGrid[posXm][posYm] = tempCard;
+            card.gridPosition = "_"+posXm+posYm;
+        }
+        
+        function switchPosition(originalX, originalY, targetX, targetY){
+            
+            tempCard1 = cardsGrid[targetX][targetY];
+            tempCard2 = cardsGrid[blankTilePosition.x][blankTilePosition.y];
+            
+            cardsGrid[blankTilePosition.x][blankTilePosition.y] = tempCard1;
+            cardsGrid[targetX][targetY] = tempCard2;
+            
+            cardsGrid[blankTilePosition.x][blankTilePosition.y].gridPosition = "_"+blankTilePosition.x+""+blankTilePosition.y;
+            cardsGrid[targetX][targetY].gridPosition = "_"+targetX+""+targetY;
+            
+            blankTilePosition = {"x":targetX, "y": targetY};
+        }
+
+    }
+    
+};
+</script>
+
+    </body>
+</html>
