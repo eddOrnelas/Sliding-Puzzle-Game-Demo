@@ -97,17 +97,7 @@ window.onload = function() {
         }
     }
     
-    function restarGame(){
-            moves = 0;
-            gameCards = null;
-            movesDone = [];
-            cardsGrid = [];
-            game.state.start(game.state.current);
-            moves = 0;
-            gameCards = null;
-            movesDone = [];
-            cardsGrid = [];
-    }
+    
     
     function checkCards(){
             
@@ -442,7 +432,7 @@ window.onload = function() {
                 }
             }
             
-            //check left
+            //check right
             if(typeof cardsGrid[posX-1] !== "undefined" && typeof cardsGrid[posX-1][posY] !== "undefined"){
                 if(cardsGrid[posX-1][posY].number === 0){
                     //alert("Move Left");
@@ -454,7 +444,7 @@ window.onload = function() {
                         //moveCards(posX, posY, posX-1, posY, card);
                         switchPosition(posX-1, posY, posX, posY);
                         card.gridPosition = "_"+(posX-1)+""+(posY);
-                        movesDone.push({"number":card.number, "direction":"left"});
+                        movesDone.push({"number":card.number, "direction":"right"});
                         moves += 1;
                         checkCards();
                     }, this);
@@ -462,7 +452,7 @@ window.onload = function() {
                 }
             }
             
-            //check right
+            //check left
             if(typeof cardsGrid[posX+1] !== "undefined" && typeof cardsGrid[posX+1][posY] !== "undefined"){
                 if(cardsGrid[posX+1][posY].number === 0){
                     //alert("Move Right");
@@ -474,7 +464,7 @@ window.onload = function() {
                         //moveCards(posX, posY, posX+1, posY, card);
                         switchPosition(posX+1, posY, posX, posY);
                         card.gridPosition = "_"+(posX+1)+""+(posY);
-                        movesDone.push({"number":card.number, "direction":"right"});
+                        movesDone.push({"number":card.number, "direction":"left"});
                         moves += 1;
                         checkCards();
                     }, this);
@@ -506,6 +496,17 @@ window.onload = function() {
             blankTilePosition = {"x":targetX, "y": targetY};
         }
 
+    }
+    
+    function restarGame(){
+            moves = 0;
+            gameCards = null;
+            movesDone = [];
+            cardsGrid = [];
+            game_music.stop();
+            gameState = "playing";
+            turnState = "pick";
+            game.state.start(game.state.current);
     }
     
 };
